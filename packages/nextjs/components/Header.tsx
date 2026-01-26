@@ -4,9 +4,11 @@ import React, { useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { hardhat } from "viem/chains";
+import { useAccount } from "wagmi";
 import { Bars3Icon, BugAntIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import { FaucetButton, RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
 import { useOutsideClick, useTargetNetwork } from "~~/hooks/scaffold-eth";
+import { useUserProfile } from "~~/hooks/splitchain/useUserProfile";
 
 type HeaderMenuLink = {
   label: string;
@@ -57,9 +59,20 @@ export const HeaderMenuLinks = () => {
   );
 };
 
-/**
- * Site header
- */
+const UserProfileDisplay = () => {
+  const { address } = useAccount();
+  const { data: user } = useUserProfile(address);
+
+  if (!user) return null;
+
+  return (
+    <div className="flex items-center mr-4 bg-base-200 rounded-full px-3 py-1 text-sm font-medium gap-2">
+      <span className="opacity-70">Hi,</span>
+      <span>{user.displayName}</span>
+    </div>
+  );
+};
+
 export const Header = () => {
   const { targetNetwork } = useTargetNetwork();
   const isLocalNetwork = targetNetwork.id === hardhat.id;
@@ -97,6 +110,7 @@ export const Header = () => {
         </ul>
       </div>
       <div className="navbar-end grow mr-4">
+        <UserProfileDisplay />
         <RainbowKitCustomConnectButton />
         {isLocalNetwork && <FaucetButton />}
       </div>

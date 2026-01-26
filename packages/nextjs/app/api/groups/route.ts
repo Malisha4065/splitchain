@@ -86,3 +86,45 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+// DELETE /api/groups?id=1&user=0x... - Delete a group (creator only)
+export async function DELETE(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const groupId = searchParams.get("id");
+  const userAddress = searchParams.get("user");
+
+  if (!groupId || !userAddress) {
+    return NextResponse.json({ error: "id and user params required" }, { status: 400 });
+  }
+
+  try {
+    // Find the group and verify ownership
+    const group = await prisma.group.findUnique({
+      where: { id: parseInt(groupId) },
+    });
+
+    if (!group) {
+      return NextResponse.json({ error: "Group not found" }, { status: 404 });
+    }
+
+    if (group.creatorAddress.toLowerCase() !== userAddress.toLowerCase()) {
+      return NextResponse.json({ error: "Only the group creator can delete this group" }, { status: 403 });
+    }
+
+    // Delete related data first (settlements, expense participants, expenses)
+    await prisma.settlement.deleteMany({ where: { groupId: parseInt(groupId) } });
+    await prisma.expenseParticipant.deleteMany({
+      where: { expense: { groupId: parseInt(groupId) } },
+    });
+    await prisma.expense.deleteMany({ where: { groupId: parseInt(groupId) } });
+    await prisma.groupMember.deleteMany({ where: { groupId: parseInt(groupId) } });
+
+    // Finally delete the group
+    await prisma.group.delete({ where: { id: parseInt(groupId) } });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting group:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}

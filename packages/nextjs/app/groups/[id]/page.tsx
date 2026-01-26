@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import type { NextPage } from "next";
 import { formatEther } from "viem";
 import { useAccount } from "wagmi";
@@ -55,6 +55,7 @@ interface BalanceData {
 
 const GroupDetailPage: NextPage = () => {
   const params = useParams();
+  const router = useRouter();
   const groupId = parseInt(params.id as string);
   const { address, isConnected } = useAccount();
   const [activeTab, setActiveTab] = useState<"expenses" | "balances">("expenses");
@@ -62,6 +63,33 @@ const GroupDetailPage: NextPage = () => {
   const [group, setGroup] = useState<Group | null>(null);
   const [balanceData, setBalanceData] = useState<BalanceData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const isCreator = group?.creator?.address?.toLowerCase() === address?.toLowerCase();
+
+  const handleDeleteGroup = async () => {
+    if (!address || !isCreator) return;
+
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/groups?id=${groupId}&user=${address}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        router.push("/groups");
+      } else {
+        const data = await res.json();
+        console.error("Failed to delete group:", data.error);
+      }
+    } catch (error) {
+      console.error("Error deleting group:", error);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
 
   const fetchGroup = useCallback(async () => {
     try {
@@ -153,6 +181,15 @@ const GroupDetailPage: NextPage = () => {
             <h1 className="text-3xl font-bold flex items-center gap-3">
               <span className="text-4xl">👥</span>
               {group.name}
+              {isCreator && (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="btn btn-ghost btn-sm text-error opacity-60 hover:opacity-100"
+                  title="Delete Group"
+                >
+                  🗑️
+                </button>
+              )}
             </h1>
             <p className="opacity-70 mt-1">
               {group.members.length} members · {group.expenses.length} expenses
@@ -312,6 +349,38 @@ const GroupDetailPage: NextPage = () => {
               <p className="opacity-70">No outstanding debts in this group.</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg text-error">⚠️ Delete Group</h3>
+            <p className="py-4">
+              Are you sure you want to delete <strong>{group.name}</strong>?
+              <br />
+              <span className="text-sm opacity-70">
+                This will permanently delete all expenses, settlements, and member data.
+              </span>
+            </p>
+            <div className="modal-action">
+              <button className="btn" onClick={() => setShowDeleteConfirm(false)} disabled={isDeleting}>
+                Cancel
+              </button>
+              <button className="btn btn-error" onClick={handleDeleteGroup} disabled={isDeleting}>
+                {isDeleting ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm"></span>
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete Group"
+                )}
+              </button>
+            </div>
+          </div>
+          <div className="modal-backdrop bg-black/50" onClick={() => !isDeleting && setShowDeleteConfirm(false)}></div>
         </div>
       )}
     </div>

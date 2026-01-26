@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { MemberSearchInput } from "./MemberSearchInput";
 import { useAccount } from "wagmi";
+import { useUserProfile } from "~~/hooks/splitchain/useUserProfile";
 
 interface User {
   address: string;
@@ -23,6 +24,7 @@ interface CreateGroupModalProps {
 
 export function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateGroupModalProps) {
   const { address } = useAccount();
+  const { data: user } = useUserProfile(address);
   const [groupName, setGroupName] = useState("");
   const [members, setMembers] = useState<SelectedMember[]>([]);
   const [isCreating, setIsCreating] = useState(false);
@@ -48,16 +50,6 @@ export function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateGroupModa
     setError("");
 
     try {
-      // Ensure creator has a profile
-      await fetch("/api/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          address,
-          displayName: `User ${address.slice(0, 6)}`,
-        }),
-      });
-
       // Create group via API
       const res = await fetch("/api/groups", {
         method: "POST",
@@ -144,7 +136,7 @@ export function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateGroupModa
           <div className="flex flex-wrap gap-2">
             {/* Current user */}
             <span className="badge badge-primary badge-lg">
-              {address?.slice(0, 6)}...{address?.slice(-4)} (you)
+              {user?.displayName || `${address?.slice(0, 6)}...${address?.slice(-4)}`} (you)
             </span>
 
             {/* Added members */}

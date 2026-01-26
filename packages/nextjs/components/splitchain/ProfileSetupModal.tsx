@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
+import { queryClient } from "~~/components/ScaffoldEthAppWithProviders";
+import { useUserProfile } from "~~/hooks/splitchain/useUserProfile";
 
 interface User {
   address: string;
@@ -16,39 +18,28 @@ interface ProfileSetupModalProps {
 export function ProfileSetupModal({ onComplete }: ProfileSetupModalProps) {
   const { address, isConnected } = useAccount();
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Check if user exists in DB when wallet connects
+  // Check if user exists
+  const { data: user, isLoading: isUserLoading } = useUserProfile(address);
+
   useEffect(() => {
-    if (!isConnected || !address) {
-      setIsLoading(false);
+    if (!isConnected) {
+      setIsOpen(false);
       return;
     }
 
-    const checkUser = async () => {
-      try {
-        const res = await fetch(`/api/users?address=${address}`);
-        if (res.ok) {
-          // User exists - don't show modal
-          setIsOpen(false);
-        } else if (res.status === 404) {
-          // User doesn't exist - show modal
-          setIsOpen(true);
-          // Pre-fill with a suggested name
-          setDisplayName(`User ${address.slice(0, 6)}`);
-        }
-      } catch (error) {
-        console.error("Error checking user:", error);
-      } finally {
-        setIsLoading(false);
+    if (!isUserLoading && !user) {
+      setIsOpen(true);
+      if (address) {
+        setDisplayName(`User ${address.slice(0, 6)}`);
       }
-    };
-
-    checkUser();
-  }, [address, isConnected]);
+    } else {
+      setIsOpen(false);
+    }
+  }, [isConnected, isUserLoading, user, address]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,6 +59,8 @@ export function ProfileSetupModal({ onComplete }: ProfileSetupModalProps) {
 
       if (res.ok) {
         const user = await res.json();
+        // invalidating the query will cause useUserProfile to refetch and close the modal
+        await queryClient.invalidateQueries({ queryKey: ["user", address?.toLowerCase()] });
         setIsOpen(false);
         onComplete?.(user);
       }
@@ -78,8 +71,8 @@ export function ProfileSetupModal({ onComplete }: ProfileSetupModalProps) {
     }
   };
 
-  // Don't render anything while loading or if user exists
-  if (isLoading || !isOpen) return null;
+  // Don't render anything while loading or if not needed
+  if (isUserLoading || !isOpen) return null;
 
   return (
     <div className="modal modal-open">

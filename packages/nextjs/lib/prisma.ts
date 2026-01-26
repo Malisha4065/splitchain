@@ -6,6 +6,7 @@ declare global {
   var prisma: PrismaClient | undefined;
 }
 
+// Prisma 7+ requires non-empty options
 export const prisma = globalThis.prisma || new PrismaClient();
 
 if (process.env.NODE_ENV !== "production") {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useDisconnect } from "wagmi";
 import { queryClient } from "~~/components/ScaffoldEthAppWithProviders";
 import { useUserProfile } from "~~/hooks/splitchain/useUserProfile";
 
@@ -17,6 +17,7 @@ interface ProfileSetupModalProps {
 
 export function ProfileSetupModal({ onComplete }: ProfileSetupModalProps) {
   const { address, isConnected } = useAccount();
+  const { disconnectAsync } = useDisconnect();
   const [isOpen, setIsOpen] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -89,12 +90,32 @@ export function ProfileSetupModal({ onComplete }: ProfileSetupModalProps) {
             <label className="label">
               <span className="label-text">Your Wallet</span>
             </label>
-            <div className="input input-bordered flex items-center gap-2 bg-base-200">
+            <div className="input input-bordered flex items-center gap-2 bg-base-200 pr-1">
               <span className="text-success">✓</span>
-              <span className="font-mono text-sm truncate">{address}</span>
+              <span className="font-mono text-sm truncate flex-1">{address}</span>
+              <button
+                type="button"
+                onClick={async () => {
+                  await disconnectAsync();
+                }}
+                className="btn btn-xs btn-ghost text-xs opacity-70 hover:opacity-100"
+              >
+                Switch
+              </button>
             </div>
             <label className="label">
-              <span className="label-text-alt opacity-60">Auto-connected via Scaffold-ETH</span>
+              <span className="label-text-alt opacity-60">
+                Connected address.{" "}
+                <button
+                  type="button"
+                  className="link link-hover"
+                  onClick={async () => {
+                    await disconnectAsync();
+                  }}
+                >
+                  Not you?
+                </button>
+              </span>
             </label>
           </div>
 

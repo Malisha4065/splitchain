@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { formatEther } from "viem";
-import { useAccount } from "wagmi";
+import { useAccount, usePublicClient } from "wagmi";
 import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 
 interface User {
@@ -24,25 +24,39 @@ export function BalanceCard({ groupId, creditor, creditorUser, amount, onSettled
   const [isSettling, setIsSettling] = useState(false);
 
   const { writeContractAsync } = useScaffoldWriteContract({ contractName: "SplitChain" });
+  const publicClient = usePublicClient();
 
   const isCreditor = creditor.toLowerCase() === address?.toLowerCase();
   const amountBigInt = BigInt(amount);
   const amountEth = formatEther(amountBigInt);
 
   const handleSettle = async () => {
-    if (!address || isCreditor) return;
+    if (!address || isCreditor || !publicClient) return;
 
     setIsSettling(true);
     try {
-      // Call blockchain contract
-      const tx = await writeContractAsync({
+      console.log(`Settling ${amountEth} ETH to ${creditor}`);
+
+      // 1. Call blockchain contract
+      const txHash = await writeContractAsync({
         functionName: "settle",
         args: [creditor, BigInt(groupId)],
         value: amountBigInt,
       });
 
-      // Record settlement in database
-      await fetch("/api/settlements", {
+      console.log("Tx sent:", txHash);
+
+      if (!txHash) {
+        console.error("Tx hash missing");
+        return;
+      }
+
+      // 2. Wait for confirmation
+      await publicClient.waitForTransactionReceipt({ hash: txHash });
+      console.log("Tx confirmed");
+
+      // 3. Record in DB
+      const res = await fetch("/api/settlements", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -50,13 +64,19 @@ export function BalanceCard({ groupId, creditor, creditorUser, amount, onSettled
           fromAddress: address,
           toAddress: creditor,
           amount: amount,
-          txHash: tx,
+          txHash: txHash,
         }),
       });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to record settlement");
+      }
 
       onSettled?.();
     } catch (error) {
       console.error("Settlement failed:", error);
+      // TODO: Show toast error
     } finally {
       setIsSettling(false);
     }

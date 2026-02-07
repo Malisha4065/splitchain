@@ -28,7 +28,7 @@ const Home: NextPage = () => {
 
           {/* Description */}
           <p className="text-lg opacity-60 max-w-xl mx-auto mb-8">
-            The decentralized Splitwise alternative with one-click crypto settlement, immutable records, and debt
+            The decentralized expense splitting platform with one-click crypto settlement, immutable records, and debt
             optimization. No more chasing payments.
           </p>
 

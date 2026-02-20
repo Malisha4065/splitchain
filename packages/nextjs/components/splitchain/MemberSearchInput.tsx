@@ -108,6 +108,7 @@ export function MemberSearchInput({
               <div className="avatar placeholder">
                 <div className="bg-neutral text-neutral-content rounded-full w-8">
                   {user.avatarUrl ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
                     <img src={user.avatarUrl} alt={user.displayName} />
                   ) : (
                     <span className="text-xs">{user.displayName.charAt(0).toUpperCase()}</span>

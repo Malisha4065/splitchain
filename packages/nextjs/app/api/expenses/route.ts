@@ -106,7 +106,9 @@ export async function DELETE(request: NextRequest) {
     // Check if user is payer or participant
     const normalizedUser = userAddress.toLowerCase();
     const isPayer = expense.payerAddress.toLowerCase() === normalizedUser;
-    const isParticipant = expense.participants.some(p => p.userAddress.toLowerCase() === normalizedUser);
+    const isParticipant = expense.participants.some(
+      (p: { userAddress: string }) => p.userAddress.toLowerCase() === normalizedUser,
+    );
 
     if (!isPayer && !isParticipant) {
       return NextResponse.json({ error: "Only payer or participants can delete this expense" }, { status: 403 });
@@ -145,7 +147,9 @@ export async function PUT(request: NextRequest) {
     // Check if user is payer or participant
     const normalizedUser = userAddress.toLowerCase();
     const isPayer = expense.payerAddress.toLowerCase() === normalizedUser;
-    const isParticipant = expense.participants.some(p => p.userAddress.toLowerCase() === normalizedUser);
+    const isParticipant = expense.participants.some(
+      (p: { userAddress: string }) => p.userAddress.toLowerCase() === normalizedUser,
+    );
 
     if (!isPayer && !isParticipant) {
       return NextResponse.json({ error: "Only payer or participants can edit this expense" }, { status: 403 });
